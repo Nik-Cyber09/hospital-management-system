@@ -43,6 +43,12 @@ const formatDate = (value, options = { month: 'short', day: 'numeric', year: 'nu
 }
 const formatTime = (value) => value ? formatDate(value, { hour: 'numeric', minute: '2-digit' }) : '—'
 const personName = (items, id) => items.find((item) => item.id === id)?.name || 'Unassigned'
+const dateTimeInputValue = (value) => {
+  const date = value ? new Date(value) : new Date()
+  if (Number.isNaN(date.getTime())) return ''
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+  return date.toISOString().slice(0, 16)
+}
 function StatusBadge({ children }) {
   return <span className={`status-badge status-${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span>
 }
