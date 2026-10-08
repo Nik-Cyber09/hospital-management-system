@@ -268,7 +268,7 @@ function HospitalApp({ user, onLogout }) {
           <span className="note-icon"><Icon name="heart" size={17} /></span>
           <strong>Care starts here</strong>
           <p>Your team's daily operations, all in one place.</p>
-          <span className="demo-label"><span /> LOCAL DEMO MODE</span>
+          <span className="demo-label"><span /> SECURE STAFF PORTAL</span>
         </div>
         <div className="profile-card">
           <Avatar name={user.name} tone={2} /><button className="profile-info" onClick={() => setAccountModal(true)} title="Change your password"><strong>{user.name}</strong><small>{user.role === 'admin' ? 'Administrator · Account' : 'Clinic staff · Account'}</small></button><button className="profile-signout" onClick={onLogout} title="Sign out" aria-label="Sign out"><Icon name="more" size={18} /></button>
