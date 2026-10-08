@@ -1,23 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { apiRequest } from './api.js'
+import { LoadingScreen, LoginScreen } from './Auth.jsx'
 import './App.css'
 
-const STORAGE_KEY = 'carepoint-hospital-demo-v2'
 const makeEmptyData = () => ({ patients: [], doctors: [], appointments: [], invoices: [] })
 
-const loadData = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return { data: makeEmptyData(), error: '' }
-    const parsed = JSON.parse(stored)
-    const valid = ['patients', 'doctors', 'appointments', 'invoices'].every((key) => Array.isArray(parsed[key]))
-    if (!valid) throw new Error('Saved demo data did not match the expected format.')
-    return { data: parsed, error: '' }
-  } catch (error) {
-    return {
-      data: makeEmptyData(),
-      error: `Saved data could not be loaded (${error instanceof Error ? error.message : 'unknown error'}). Demo data is shown instead.`,
-    }
-  }
+const localDateKey = (value) => {
+  const date = new Date(value)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 const Icon = ({ name, size = 19 }) => {
@@ -51,14 +41,6 @@ const formatDate = (value, options = { month: 'short', day: 'numeric', year: 'nu
 }
 const formatTime = (value) => value ? formatDate(value, { hour: 'numeric', minute: '2-digit' }) : '—'
 const personName = (items, id) => items.find((item) => item.id === id)?.name || 'Unassigned'
-const nextId = (items, prefix, digits = 3) => {
-  const max = items.reduce((value, item) => {
-    const number = Number(item.id?.split('-').at(-1))
-    return Number.isFinite(number) ? Math.max(value, number) : value
-  }, 0)
-  return `${prefix}-${String(max + 1).padStart(digits, '0')}`
-}
-
 function StatusBadge({ children }) {
   return <span className={`status-badge status-${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span>
 }
@@ -67,13 +49,15 @@ function Avatar({ name, tone = 0 }) {
   return <span className={`avatar avatar-${tone % 5}`} aria-hidden="true">{initials(name)}</span>
 }
 
-function App() {
-  const [initial] = useState(loadData)
-  const [records, setRecords] = useState(initial.data)
+function HospitalApp({ user, onLogout }) {
+  const [records, setRecords] = useState(makeEmptyData)
+  const [recordsLoading, setRecordsLoading] = useState(true)
+  const [recordsError, setRecordsError] = useState('')
   const [activeSection, setActiveSection] = useState('Overview')
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
-  const [toast, setToast] = useState(initial.error ? { kind: 'error', message: initial.error } : null)
+  const [accountModal, setAccountModal] = useState(false)
+  const [toast, setToast] = useState(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [today] = useState(() => {
     const date = new Date()
@@ -81,13 +65,25 @@ function App() {
   })
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
-    } catch (error) {
-      const message = `Changes could not be saved in this browser: ${error instanceof Error ? error.message : 'storage unavailable'}`
-      window.setTimeout(() => setToast({ kind: 'error', message }), 0)
-    }
-  }, [records])
+    let cancelled = false
+    Promise.all(['patients', 'doctors', 'appointments', 'invoices'].map(async (type) => {
+      const response = await apiRequest(`/api/records/${type}`)
+      return [type, response.records]
+    })).then((entries) => {
+      if (!cancelled) setRecords(Object.fromEntries(entries))
+    }).catch((error) => {
+      if (!cancelled) setRecordsError(error instanceof Error ? error.message : 'Unable to load clinic records.')
+    }).finally(() => {
+      if (!cancelled) setRecordsLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    const expireSession = () => onLogout()
+    window.addEventListener('carepoint:unauthorized', expireSession)
+    return () => window.removeEventListener('carepoint:unauthorized', expireSession)
+  }, [onLogout])
 
   useEffect(() => {
     if (!toast) return undefined
@@ -96,7 +92,7 @@ function App() {
   }, [toast])
 
   const todayAppointments = useMemo(() => records.appointments
-    .filter((appointment) => appointment.date?.slice(0, 10) === today && appointment.status !== 'Cancelled')
+    .filter((appointment) => appointment.date && localDateKey(appointment.date) === today && appointment.status !== 'Cancelled')
     .sort((a, b) => a.date.localeCompare(b.date)), [records.appointments, today])
   const query = search.trim().toLowerCase()
 
@@ -115,38 +111,61 @@ function App() {
   [records.invoices, records.patients, query])
 
   const notify = (message, kind = 'success') => setToast({ message, kind })
-  const saveRecord = (kind, form) => {
+  const saveRecord = async (kind, form) => {
     const current = modal?.item
     const collection = { patient: 'patients', doctor: 'doctors', appointment: 'appointments', invoice: 'invoices' }[kind]
-    const prefix = { patient: 'PT', doctor: 'DR', appointment: 'AP', invoice: 'INV' }[kind]
-    const id = current?.id || nextId(records[collection], prefix, kind === 'patient' ? 4 : 3)
     let item
     if (kind === 'patient') {
-      item = { id, name: form.get('name').trim(), age: Number(form.get('age')), gender: form.get('gender'), phone: form.get('phone').trim(), condition: form.get('condition').trim(), doctorId: form.get('doctorId') || '', status: form.get('status') }
-      setRecords((previous) => ({ ...previous, patients: current ? previous.patients.map((record) => record.id === id ? item : record) : [item, ...previous.patients] }))
+      item = { name: form.get('name').trim(), age: Number(form.get('age')), gender: form.get('gender'), phone: form.get('phone').trim(), condition: form.get('condition').trim(), doctorId: form.get('doctorId') || '', status: form.get('status') }
     } else if (kind === 'doctor') {
-      item = { id, name: form.get('name').trim(), specialty: form.get('specialty').trim(), email: form.get('email').trim(), phone: form.get('phone').trim(), status: form.get('status'), availability: form.get('availability').trim() }
-      setRecords((previous) => ({ ...previous, doctors: current ? previous.doctors.map((record) => record.id === id ? item : record) : [item, ...previous.doctors] }))
+      item = { name: form.get('name').trim(), specialty: form.get('specialty').trim(), email: form.get('email').trim(), phone: form.get('phone').trim(), status: form.get('status'), availability: form.get('availability').trim() }
     } else if (kind === 'appointment') {
       const selectedPatient = form.get('patientId')
       const selectedDoctor = form.get('doctorId')
-      item = { id, patientId: selectedPatient, doctorId: selectedDoctor, date: form.get('date'), reason: form.get('reason').trim(), status: form.get('status') }
-      setRecords((previous) => ({ ...previous, appointments: current ? previous.appointments.map((record) => record.id === id ? item : record) : [item, ...previous.appointments] }))
+      item = { patientId: selectedPatient, doctorId: selectedDoctor, date: new Date(form.get('date')).toISOString(), reason: form.get('reason').trim(), status: form.get('status') }
     } else {
-      item = { id, patientId: form.get('patientId'), date: form.get('date'), description: form.get('description').trim(), amount: Number(form.get('amount')), status: form.get('status') }
-      setRecords((previous) => ({ ...previous, invoices: current ? previous.invoices.map((record) => record.id === id ? item : record) : [item, ...previous.invoices] }))
+      item = { patientId: form.get('patientId'), date: form.get('date'), description: form.get('description').trim(), amount: Number(form.get('amount')), status: form.get('status') }
     }
+    const result = await apiRequest(current ? `/api/records/${collection}/${encodeURIComponent(current.id)}` : `/api/records/${collection}`, {
+      method: current ? 'PUT' : 'POST',
+      body: JSON.stringify(item),
+    })
+    const saved = result.record
+    setRecords((previous) => ({
+      ...previous,
+      [collection]: current ? previous[collection].map((record) => record.id === current.id ? saved : record) : [saved, ...previous[collection]],
+    }))
     setModal(null)
-    notify(`${kind[0].toUpperCase()}${kind.slice(1)} ${current ? 'updated' : 'added'} successfully.`)
+    notify(`${kind[0].toUpperCase()}${kind.slice(1)} ${current ? 'updated' : 'saved'} successfully.`)
   }
 
-  const setAppointmentStatus = (id, status) => {
-    setRecords((previous) => ({ ...previous, appointments: previous.appointments.map((item) => item.id === id ? { ...item, status } : item) }))
-    notify(`Appointment marked ${status.toLowerCase()}.`)
+  const setAppointmentStatus = async (id, status) => {
+    const current = records.appointments.find((item) => item.id === id)
+    if (!current) return
+    try {
+      const result = await apiRequest(`/api/records/appointments/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'id')), status }),
+      })
+      setRecords((previous) => ({ ...previous, appointments: previous.appointments.map((item) => item.id === id ? result.record : item) }))
+      notify(`Appointment marked ${status.toLowerCase()}.`)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Appointment could not be updated.', 'error')
+    }
   }
-  const toggleInvoice = (id) => {
-    setRecords((previous) => ({ ...previous, invoices: previous.invoices.map((item) => item.id === id ? { ...item, status: item.status === 'Paid' ? 'Pending' : 'Paid' } : item) }))
-    notify('Invoice payment status updated.')
+  const toggleInvoice = async (id) => {
+    const current = records.invoices.find((item) => item.id === id)
+    if (!current) return
+    try {
+      const result = await apiRequest(`/api/records/invoices/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'id')), status: current.status === 'Paid' ? 'Pending' : 'Paid' }),
+      })
+      setRecords((previous) => ({ ...previous, invoices: previous.invoices.map((item) => item.id === id ? result.record : item) }))
+      notify('Invoice payment status updated.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Invoice could not be updated.', 'error')
+    }
   }
   const openAppointmentForm = () => {
     if (!records.patients.length || !records.doctors.length) {
@@ -169,7 +188,12 @@ function App() {
       appointments: ['id', 'date', 'patientId', 'doctorId', 'reason', 'status'],
       invoices: ['id', 'date', 'patientId', 'description', 'amount', 'status'],
     }[type]
-    const csv = [columns.join(','), ...records[type].map((item) => columns.map((key) => `"${String(item[key] ?? '').replaceAll('"', '""')}"`).join(','))].join('\r\n')
+    const quoteCsv = (value) => {
+      const text = String(value ?? '')
+      const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text
+      return `"${safeText.replaceAll('"', '""')}"`
+    }
+    const csv = [columns.join(','), ...records[type].map((item) => columns.map((key) => quoteCsv(item[key])).join(','))].join('\r\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a')
     link.href = url
@@ -186,8 +210,11 @@ function App() {
     { label: 'Doctors', icon: 'doctors' },
     { label: 'Billing', icon: 'billing' },
   ]
+  if (user.role === 'admin') navigation.push({ label: 'Staff', icon: 'patients' })
   const sectionType = { Patients: 'patients', Doctors: 'doctors', Appointments: 'appointments', Billing: 'invoices' }[activeSection]
 
+  if (recordsLoading) return <LoadingScreen message="Loading clinic records…" />
+  if (recordsError) return <main className="records-error-page"><section className="auth-card"><span className="auth-eyebrow">CLINIC DATA UNAVAILABLE</span><h1>Could not load your workspace</h1><p>{recordsError}</p><button className="auth-submit" onClick={() => window.location.reload()}>Try again</button><button className="auth-quiet-button" onClick={onLogout}>Sign out</button></section></main>
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
@@ -211,9 +238,9 @@ function App() {
           <p>Your team's daily operations, all in one place.</p>
           <span className="demo-label"><span /> LOCAL DEMO MODE</span>
         </div>
-        <button className="profile-card" onClick={() => notify('This local demo has no user accounts or sign-in.')}>
-          <Avatar name="Clinic team" tone={2} /><span><strong>Clinic team</strong><small>Local workspace</small></span><Icon name="more" size={18} />
-        </button>
+        <div className="profile-card">
+          <Avatar name={user.name} tone={2} /><button className="profile-info" onClick={() => setAccountModal(true)} title="Change your password"><strong>{user.name}</strong><small>{user.role === 'admin' ? 'Administrator · Account' : 'Clinic staff · Account'}</small></button><button className="profile-signout" onClick={onLogout} title="Sign out" aria-label="Sign out"><Icon name="more" size={18} /></button>
+        </div>
       </aside>
 
       <main className="main-area">
@@ -239,6 +266,8 @@ function App() {
               {sectionType && <button className="button button-secondary" onClick={() => exportCsv(sectionType)}><Icon name="download" size={17} /> Export</button>}
               {activeSection === 'Billing'
                 ? <button className="button button-primary" onClick={openInvoiceForm}><Icon name="plus" size={18} /> New invoice</button>
+                : activeSection === 'Staff'
+                  ? null
                 : <button className="button button-primary" onClick={activeSection === 'Doctors' ? () => setModal({ kind: 'doctor' }) : activeSection === 'Patients' ? () => setModal({ kind: 'patient' }) : openAppointmentForm}><Icon name="plus" size={18} /> {activeSection === 'Overview' ? 'New appointment' : `Add ${activeSection === 'Appointments' ? 'appointment' : activeSection.slice(0, -1).toLowerCase()}`}</button>}
             </div>
           </div>
@@ -247,15 +276,51 @@ function App() {
           {activeSection === 'Patients' && <Patients patients={visiblePatients} records={records} onEdit={(item) => setModal({ kind: 'patient', item })} />}
           {activeSection === 'Doctors' && <Doctors doctors={visibleDoctors} onEdit={(item) => setModal({ kind: 'doctor', item })} />}
           {activeSection === 'Billing' && <Billing invoices={visibleInvoices} records={records} onToggle={toggleInvoice} />}
-          <footer className="page-footer"><span><span className="footer-dot" /> All changes are saved in this browser</span><span>Carepoint Health · Local demo · Not for real patient data</span></footer>
+          {activeSection === 'Staff' && user.role === 'admin' && <StaffDirectory onNotify={notify} />}
+          <footer className="page-footer"><span><span className="footer-dot" /> Clinic records are stored on your server</span><span>Carepoint Health · Not for real patient data until approved</span></footer>
         </div>
       </main>
 
       {mobileNavOpen && <button className="mobile-overlay" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
       {modal && <RecordModal key={`${modal.kind}-${modal.item?.id || 'new'}`} modal={modal} records={records} onClose={() => setModal(null)} onSave={saveRecord} />}
+      {accountModal && <PasswordModal onClose={() => setAccountModal(false)} onChanged={onLogout} />}
       {toast && <div className={`toast toast-${toast.kind}`} role="status"><span>{toast.kind === 'error' ? '!' : '✓'}</span>{toast.message}<button aria-label="Dismiss notification" onClick={() => setToast(null)}><Icon name="close" size={16} /></button></div>}
     </div>
   )
+}
+
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [serverError, setServerError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/api/auth/me').then((result) => {
+      if (!cancelled) setUser(result.user)
+    }).catch((error) => {
+      if (cancelled || error.status === 401) return
+      setServerError(error.message)
+    }).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await apiRequest('/api/auth/logout', { method: 'POST' })
+    } catch {
+      setServerError('You were signed out locally, but the server could not confirm sign-out.')
+    } finally {
+      setUser(null)
+    }
+  }, [])
+
+  if (loading) return <LoadingScreen />
+  if (serverError) return <LoginScreen serverError={serverError} onRetry={() => window.location.reload()} onLogin={setUser} />
+  if (!user) return <LoginScreen onLogin={setUser} />
+  return <HospitalApp user={user} onLogout={logout} />
 }
 
 function sectionDescription(section) {
@@ -264,6 +329,7 @@ function sectionDescription(section) {
     Patients: 'Keep patient details and care assignments organized.',
     Doctors: 'Your care team, specialties, and availability.',
     Billing: 'Track invoices and follow up on outstanding balances.',
+    Staff: 'Manage staff access to your clinic workspace.',
   }[section]
 }
 
@@ -363,11 +429,123 @@ function Billing({ invoices, records, onToggle }) {
   </>
 }
 
+function StaffDirectory({ onNotify }) {
+  const [staff, setStaff] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/api/auth/users').then((result) => {
+      if (!cancelled) setStaff(result.users)
+    }).catch((requestError) => {
+      if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Unable to load staff accounts.')
+    }).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const createStaff = async (event) => {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setSaving(true)
+    setError('')
+    try {
+      await apiRequest('/api/auth/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.get('name'),
+          email: form.get('email'),
+          password: form.get('password'),
+        }),
+      })
+      setOpen(false)
+      onNotify('Staff account created. Share the initial password securely.')
+      const result = await apiRequest('/api/auth/users')
+      setStaff(result.users)
+      setError('')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Staff account could not be created.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <section className="panel data-panel">
+    <div className="table-toolbar">
+      <div><strong>Staff accounts</strong><span>Create login accounts for clinic staff. Only administrators can access this page.</span></div>
+      <button className="button button-primary" onClick={() => { setError(''); setOpen(!open) }}><Icon name="plus" size={16} /> Add staff</button>
+    </div>
+    {open && <form className="staff-create-form" onSubmit={createStaff}>
+      <label className="form-field"><span>Staff name</span><input name="name" required maxLength="120" placeholder="Full name" /></label>
+      <label className="form-field"><span>Email address</span><input name="email" type="email" required maxLength="254" placeholder="staff@clinic.com" /></label>
+      <label className="form-field"><span>Initial password (12+ characters)</span><input name="password" type="password" autoComplete="new-password" required minLength="12" maxLength="72" /></label>
+      <div className="staff-form-actions"><button type="button" className="button button-secondary" onClick={() => setOpen(false)}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Creating…' : 'Create staff account'}</button></div>
+    </form>}
+    {error && <p className="staff-error" role="alert">{error}</p>}
+    {loading ? <LoadingScreen message="Loading staff accounts…" /> : <div className="table-scroll"><table><thead><tr><th>Staff member</th><th>Email</th><th>Role</th><th>Account created</th></tr></thead><tbody>
+      {staff.map((member) => <tr key={member.id}><td><div className="person-cell"><Avatar name={member.name} /><span><strong>{member.name}</strong><small>{member.id}</small></span></div></td><td>{member.email}</td><td><StatusBadge>{member.role === 'admin' ? 'Administrator' : 'Staff'}</StatusBadge></td><td>{formatDate(member.createdAt)}</td></tr>)}
+    </tbody></table>{staff.length === 0 && <EmptyState title="No accounts yet" message="This clinic is ready for its first administrator and staff accounts." />}</div>}
+    <div className="table-footer"><span>Passwords are never displayed after account creation</span><span>Use a unique password for every staff member</span></div>
+  </section>
+}
+
 function EmptyState({ title, message, action, onAction }) {
   return <div className="empty-state"><span className="empty-icon"><Icon name="search" size={20} /></span><strong>{title}</strong><p>{message}</p>{action && <button className="button button-primary" onClick={onAction}><Icon name="plus" size={17} />{action}</button>}</div>
 }
 
+function PasswordModal({ onClose, onChanged }) {
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [changed, setChanged] = useState(false)
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setSaving(true)
+    const form = new FormData(event.currentTarget)
+    const newPassword = form.get('newPassword')
+    if (newPassword !== form.get('confirmPassword')) {
+      setError('The new passwords do not match.')
+      setSaving(false)
+      return
+    }
+    try {
+      await apiRequest('/api/auth/password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: form.get('currentPassword'), newPassword }),
+      })
+      setChanged(true)
+      await onChanged()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Password could not be changed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section className="modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+      <div className="modal-header"><div><span className="eyebrow">ACCOUNT SECURITY</span><h2 id="password-modal-title">{changed ? 'Password updated' : 'Change your password'}</h2><p>{changed ? 'You have been signed out. Use your new password next time you sign in.' : 'Changing your password will sign out all active sessions.'}</p></div><button className="icon-button" aria-label="Close dialog" onClick={onClose}><Icon name="close" /></button></div>
+      {!changed && <form onSubmit={submit}>
+        <div className="form-grid">
+          <label className="form-field form-span"><span>Current password</span><input name="currentPassword" type="password" autoComplete="current-password" required autoFocus /></label>
+          <label className="form-field form-span"><span>New password (at least 12 characters)</span><input name="newPassword" type="password" autoComplete="new-password" minLength="12" maxLength="72" required /></label>
+          <label className="form-field form-span"><span>Confirm new password</span><input name="confirmPassword" type="password" autoComplete="new-password" minLength="12" maxLength="72" required /></label>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="modal-footer"><button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}>{saving ? 'Updating…' : 'Update password'}</button></div>
+      </form>}
+    </section>
+  </div>
+}
+
 function RecordModal({ modal, records, onClose, onSave }) {
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
   const kind = modal.kind
   const item = modal.item || {}
   const title = `${item.id ? 'Edit' : kind === 'invoice' ? 'Create' : 'Add'} ${kind === 'patient' ? 'patient' : kind === 'doctor' ? 'doctor' : kind === 'invoice' ? 'invoice' : 'appointment'}`
@@ -379,7 +557,18 @@ function RecordModal({ modal, records, onClose, onSave }) {
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="modal-header"><div><span className="eyebrow">CAREPOINT · {item.id || 'NEW RECORD'}</span><h2 id="modal-title">{title}</h2><p>{kind === 'patient' ? 'Add patient details and assign a care provider.' : kind === 'doctor' ? 'Add a specialist to your care team.' : kind === 'invoice' ? 'Record a patient charge and its payment status.' : 'Coordinate a patient visit with your care team.'}</p></div><button className="icon-button" aria-label="Close dialog" onClick={onClose}><Icon name="close" /></button></div>
-      <form onSubmit={(event) => { event.preventDefault(); onSave(kind, new FormData(event.currentTarget)) }}>
+      <form onSubmit={async (event) => {
+        event.preventDefault()
+        setError('')
+        setSaving(true)
+        try {
+          await onSave(kind, new FormData(event.currentTarget))
+        } catch (requestError) {
+          setError(requestError instanceof Error ? requestError.message : 'The record could not be saved.')
+        } finally {
+          setSaving(false)
+        }
+      }}>
         {kind === 'patient' && <div className="form-grid">
           <label className="form-field form-span"><span>Full name</span><input name="name" defaultValue={item.name || ''} required autoFocus placeholder="e.g. Jordan Lee" /></label>
           <label className="form-field"><span>Age</span><input name="age" type="number" min="0" max="125" defaultValue={item.age ?? ''} required placeholder="Age" /></label>
@@ -411,10 +600,9 @@ function RecordModal({ modal, records, onClose, onSave }) {
           <label className="form-field form-span"><span>Description</span><input name="description" defaultValue={item.description || ''} required placeholder="e.g. Consultation" /></label>
           <label className="form-field form-span"><span>Payment status</span><select name="status" defaultValue={item.status || 'Pending'}><option>Pending</option><option>Paid</option><option>Overdue</option></select></label>
         </div>}
-        <div className="modal-footer"><button type="button" className="button button-secondary" onClick={onClose}>Cancel</button><button type="submit" className="button button-primary"><Icon name="check" size={17} />{item.id ? 'Save changes' : kind === 'invoice' ? 'Create invoice' : 'Create record'}</button></div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="modal-footer"><button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>Cancel</button><button type="submit" className="button button-primary" disabled={saving}><Icon name="check" size={17} />{saving ? 'Saving…' : item.id ? 'Save changes' : kind === 'invoice' ? 'Create invoice' : 'Create record'}</button></div>
       </form>
     </section>
   </div>
 }
-
-export default App

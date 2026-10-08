@@ -1,0 +1,13 @@
+import mongoose from 'mongoose'
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true, maxlength: 120 },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
+  passwordHash: { type: String, required: true, select: false },
+  role: { type: String, enum: ['admin', 'staff'], required: true },
+  tokenVersion: { type: Number, default: 0, select: false },
+}, { timestamps: true, versionKey: false })
+
+userSchema.index({ role: 1 }, { unique: true, partialFilterExpression: { role: 'admin' } })
+
+export const User = mongoose.model('User', userSchema)
