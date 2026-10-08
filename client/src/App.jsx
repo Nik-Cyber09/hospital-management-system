@@ -459,7 +459,7 @@ function Billing({ invoices, records, onToggle, onDelete }) {
     <section className="panel data-panel"><div className="table-toolbar"><div><strong>Invoices</strong><span>Review payment status and visit charges</span></div></div><div className="table-scroll"><table><thead><tr><th>Invoice</th><th>Patient</th><th>Date issued</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>
       {invoices.map((invoice) => <tr key={invoice.id}><td className="id-cell">{invoice.id}</td><td>{personName(records.patients, invoice.patientId)}</td><td>{formatDate(invoice.date)}</td><td>{invoice.description}</td><td className="amount-cell">${invoice.amount.toLocaleString()}</td><td><StatusBadge>{invoice.status}</StatusBadge></td><td><div className="row-actions"><button className="action-text" onClick={() => onToggle(invoice.id)}>{invoice.status === 'Paid' ? 'Mark pending' : 'Mark paid'}</button><button className="row-action row-action-danger" aria-label={`Delete ${invoice.id}`} onClick={() => onDelete(invoice)}><Icon name="trash" size={16} /></button></div></td></tr>)}
     </tbody></table>{invoices.length === 0 && <EmptyState title="No invoices found" message="Try another search to find an invoice." />}</div>
-      <div className="table-footer"><span>Payment actions are for demo purposes only</span><span>No payment provider is connected</span></div>
+      <div className="table-footer"><span>Payment status is an internal record only</span><span>No payment provider is connected</span></div>
     </section>
   </>
 }
