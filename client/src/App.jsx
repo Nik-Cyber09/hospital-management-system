@@ -412,7 +412,7 @@ function Dashboard({ records, today, now, todayAppointments, onNavigate, onNewAp
           <Avatar name={personName(records.patients, item.patientId)} tone={index + 1} />
           <div className="schedule-detail"><strong>{personName(records.patients, item.patientId)}</strong><span>{personName(records.doctors, item.doctorId)} · {formatTime(item.date)}</span></div>
           <StatusBadge>{item.status}</StatusBadge>
-        </div>)}{!records.appointments.length && <p className="inline-empty">No visits have been scheduled yet.</p>}</div>
+        </div>)}{!upcomingAppointments.length && <p className="inline-empty">No upcoming visits have been scheduled.</p>}</div>
       </section>
       <section className="panel team-panel">
         <div className="panel-heading"><div><h2>Your care team</h2><p>{records.doctors.length} specialists</p></div><button className="text-link" onClick={() => onNavigate('Doctors')}>View team <Icon name="arrow" size={16} /></button></div>
