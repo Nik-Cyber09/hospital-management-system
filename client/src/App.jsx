@@ -373,6 +373,9 @@ function Dashboard({ records, today, now, todayAppointments, onNavigate, onNewAp
   const hourlyCounts = hours.map((_, index) => todayAppointments.filter((appointment) => new Date(appointment.date).getHours() === index + 8).length)
   const maxHourlyCount = Math.max(...hourlyCounts, 1)
   const bars = hourlyCounts.map((count) => count ? Math.max(12, (count / maxHourlyCount) * 100) : 0)
+  const upcomingAppointments = records.appointments
+    .filter((item) => item.status !== 'Cancelled' && new Date(item.date).getTime() >= now)
+    .sort((a, b) => a.date.localeCompare(b.date))
   return <>
     <div className="metric-grid">
       <Metric icon="patients" label="Total patients" value={records.patients.length} note="In your directory" tone="blue" />
