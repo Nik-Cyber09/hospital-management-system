@@ -282,7 +282,7 @@ function HospitalApp({ user, onLogout }) {
           <div className="topbar-actions">
             <label className="search-box">
               <Icon name="search" size={18} />
-              <input aria-label={`Search ${activeSection.toLowerCase()}`} placeholder={`Search ${activeSection.toLowerCase()}...`} value={search} onChange={(event) => setSearch(event.target.value)} />
+              <input ref={searchInput} aria-label={`Search ${activeSection.toLowerCase()}`} placeholder={`Search ${activeSection.toLowerCase()}...`} value={search} onChange={(event) => setSearch(event.target.value)} />
               <kbd>⌘ K</kbd>
             </label>
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => notify('You’re all caught up.')}><Icon name="bell" /><i /></button>
