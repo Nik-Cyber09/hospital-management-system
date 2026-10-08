@@ -188,6 +188,17 @@ function HospitalApp({ user, onLogout }) {
       notify(error instanceof Error ? error.message : 'Invoice could not be updated.', 'error')
     }
   }
+  const deleteRecord = async (type, item) => {
+    const label = { patients: 'patient', doctors: 'doctor', appointments: 'appointment', invoices: 'invoice' }[type]
+    if (!window.confirm(`Delete ${label} ${item.id}? This cannot be undone.`)) return
+    try {
+      await apiRequest(`/api/records/${type}/${encodeURIComponent(item.id)}`, { method: 'DELETE' })
+      setRecords((previous) => ({ ...previous, [type]: previous[type].filter((record) => record.id !== item.id) }))
+      notify(`${label[0].toUpperCase()}${label.slice(1)} deleted.`)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : `The ${label} could not be deleted.`, 'error')
+    }
+  }
   const openAppointmentForm = () => {
     if (!records.patients.length || !records.doctors.length) {
       notify('Add at least one patient and one doctor before scheduling an appointment.', 'error')
