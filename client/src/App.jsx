@@ -616,7 +616,7 @@ function RecordModal({ modal, records, onClose, onSave }) {
         {kind === 'doctor' && <div className="form-grid">
           <label className="form-field form-span"><span>Full name</span><input name="name" defaultValue={item.name || ''} required autoFocus placeholder="e.g. Dr. Jordan Lee" /></label>
           <label className="form-field form-span"><span>Specialty</span><input name="specialty" defaultValue={item.specialty || ''} required placeholder="e.g. Family medicine" /></label>
-          <label className="form-field"><span>Email</span><input name="email" type="email" defaultValue={item.email || ''} required placeholder="doctor@carepoint.demo" /></label>
+          <label className="form-field"><span>Email</span><input name="email" type="email" defaultValue={item.email || ''} required placeholder="doctor@clinic.com" /></label>
           <label className="form-field"><span>Phone</span><input name="phone" type="tel" defaultValue={item.phone || ''} required placeholder="(555) 010-0000" /></label>
           <label className="form-field"><span>Availability status</span><select name="status" defaultValue={item.status || 'On duty'}><option>On duty</option><option>Off duty</option></select></label>
           <label className="form-field"><span>Schedule</span><input name="availability" defaultValue={item.availability || ''} placeholder="e.g. Weekdays, 9 AM – 5 PM" /></label>
