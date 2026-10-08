@@ -453,7 +453,7 @@ function Appointments({ appointments, records, onEdit, onStatus, onDelete }) {
   </section>
 }
 
-function Billing({ invoices, records, onToggle }) {
+function Billing({ invoices, records, onToggle, onDelete }) {
   const outstanding = invoices.filter((invoice) => invoice.status !== 'Paid').reduce((sum, invoice) => sum + invoice.amount, 0)
   return <><div className="billing-summary"><div className="billing-summary-card"><span>Outstanding balance</span><strong>${outstanding.toLocaleString()}</strong><small>Unpaid and overdue invoices in this view</small></div><div className="billing-summary-card"><span>Invoices shown</span><strong>{invoices.length}</strong><small>Use search to find an invoice or patient</small></div></div>
     <section className="panel data-panel"><div className="table-toolbar"><div><strong>Invoices</strong><span>Review payment status and visit charges</span></div></div><div className="table-scroll"><table><thead><tr><th>Invoice</th><th>Patient</th><th>Date issued</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>
