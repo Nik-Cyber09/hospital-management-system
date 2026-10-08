@@ -63,6 +63,7 @@ function HospitalApp({ user, onLogout }) {
   const [recordsError, setRecordsError] = useState('')
   const [activeSection, setActiveSection] = useState('Overview')
   const [search, setSearch] = useState('')
+  const searchInput = useRef(null)
   const [modal, setModal] = useState(null)
   const [accountModal, setAccountModal] = useState(false)
   const [toast, setToast] = useState(null)
