@@ -7,6 +7,16 @@ import { validateRecord } from '../validation.js'
 export const recordsRouter = Router()
 const allowedTypes = new Set(['patients', 'doctors', 'appointments', 'invoices'])
 
+export function dependentRecordFilter(type, id) {
+  if (type === 'patients') {
+    return { type: { $in: ['appointments', 'invoices'] }, 'data.patientId': id }
+  }
+  if (type === 'doctors') {
+    return { $or: [{ type: 'appointments', 'data.doctorId': id }, { type: 'patients', 'data.doctorId': id }] }
+  }
+  return null
+}
+
 async function missingReference(type, data) {
   const references = type === 'patients'
     ? (data.doctorId ? [{ type: 'doctors', id: data.doctorId }] : [])
@@ -91,15 +101,22 @@ recordsRouter.put('/:type/:id', async (request, response, next) => {
 
 recordsRouter.delete('/:type/:id', async (request, response, next) => {
   try {
-    if (!allowedTypes.has(request.params.type)) {
+    const { type, id } = request.params
+    if (!allowedTypes.has(type)) {
       response.status(404).json({ error: 'Record collection not found.' })
       return
     }
-    const record = await HospitalRecord.findOneAndDelete({ type: request.params.type, id: request.params.id })
+    const record = await HospitalRecord.findOne({ type, id })
     if (!record) {
       response.status(404).json({ error: 'Record not found.' })
       return
     }
+    const dependentFilter = dependentRecordFilter(type, id)
+    if (dependentFilter && await HospitalRecord.exists(dependentFilter)) {
+      response.status(409).json({ error: `This ${type.slice(0, -1)} is still referenced by other records. Reassign or remove those records first.` })
+      return
+    }
+    await HospitalRecord.deleteOne({ _id: record._id })
     response.status(204).end()
   } catch (error) {
     next(error)

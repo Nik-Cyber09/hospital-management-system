@@ -58,6 +58,8 @@ npm run create-admin
 
 The bootstrap command refuses to create a second administrator. Remove `ADMIN_PASSWORD` from `.env` after the command succeeds. Sign in through the app, then use the account menu to change the initial password. Administrators can create staff accounts from **Staff**; open registration is not available.
 
+Patient, doctor, appointment, and invoice records support create, update, and delete actions. A patient or doctor cannot be deleted while another record refers to them; remove or reassign those references first.
+
 ## Checks
 
 ```sh

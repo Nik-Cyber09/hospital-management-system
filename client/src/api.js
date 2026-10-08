@@ -7,14 +7,19 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    credentials: 'same-origin',
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options.headers,
-    },
-  })
+  let response
+  try {
+    response = await fetch(path, {
+      ...options,
+      credentials: 'same-origin',
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...options.headers,
+      },
+    })
+  } catch {
+    throw new ApiError('The clinic server is unavailable. Check that the server is running and try again.', 0)
+  }
 
   if (response.status === 204) return null
 
@@ -22,7 +27,9 @@ export async function apiRequest(path, options = {}) {
   try {
     result = await response.json()
   } catch {
-    throw new ApiError('The server returned an invalid response.', response.status)
+    throw new ApiError(response.ok
+      ? 'The server returned an invalid response.'
+      : `The server is temporarily unavailable (HTTP ${response.status}). Try again.`, response.status)
   }
 
   if (!response.ok) {

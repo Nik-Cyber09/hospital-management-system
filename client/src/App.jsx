@@ -624,7 +624,7 @@ function RecordModal({ modal, records, onClose, onSave }) {
         {kind === 'appointment' && <div className="form-grid">
           <label className="form-field form-span"><span>Patient</span><select name="patientId" defaultValue={item.patientId || records.patients[0]?.id || ''} required>{records.patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.id}</option>)}</select></label>
           <label className="form-field form-span"><span>Doctor</span><select name="doctorId" defaultValue={item.doctorId || records.doctors[0]?.id || ''} required>{records.doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.specialty}</option>)}</select></label>
-          <label className="form-field form-span"><span>Date and time</span><input name="date" type="datetime-local" defaultValue={item.date || defaultAppointmentDate} required /></label>
+          <label className="form-field form-span"><span>Date and time</span><input name="date" type="datetime-local" defaultValue={item.id ? dateTimeInputValue(item.date) : defaultAppointmentDate} required /></label>
           <label className="form-field form-span"><span>Reason for visit</span><input name="reason" defaultValue={item.reason || ''} required placeholder="e.g. Follow-up consultation" /></label>
           <label className="form-field form-span"><span>Status</span><select name="status" defaultValue={item.status || 'Confirmed'}><option>Confirmed</option><option>Waiting</option><option>Completed</option><option>Cancelled</option></select></label>
         </div>}

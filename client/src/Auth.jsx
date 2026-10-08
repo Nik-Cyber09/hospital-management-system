@@ -40,8 +40,8 @@ export function LoginScreen({ onLogin, serverError, onRetry }) {
           {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="auth-submit" type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in securely'}</button>
         </form>}
-      <div className="auth-notice"><span>🔒</span><p>Accounts are created by your clinic administrator. Contact them if you need access.</p></div>
-      <p className="auth-disclaimer">Carepoint local deployment · Do not enter real patient information until your installation is security-reviewed and approved for clinical use.</p>
+      <div className="auth-notice"><span aria-hidden="true">🔒</span><p>Accounts are created by your clinic administrator. Contact them if you need access.</p></div>
+      <p className="auth-disclaimer">Do not enter real patient information until your installation is security-reviewed and approved for clinical use.</p>
     </section>
     <div className="auth-side-note"><span>BETTER ORGANIZED CARE</span><p>Your clinic operations,<br />in one secure workspace.</p></div>
   </main>

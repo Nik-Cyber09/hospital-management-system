@@ -16,8 +16,14 @@ function enforceTrustedOrigin(request, response, next) {
     return
   }
   const origin = request.get('origin')
-  const expectedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
-  if (origin && expectedOrigin && origin !== expectedOrigin) {
+  const configuredOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+  if (process.env.NODE_ENV !== 'production') {
+    configuredOrigins.push('http://127.0.0.1:5173', 'http://localhost:5173')
+  }
+  if (!origin || !configuredOrigins.includes(origin)) {
     response.status(403).json({ error: 'Request origin is not allowed.' })
     return
   }
@@ -59,12 +65,16 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use((error, _request, response, _next) => {
-  console.error('Request failed:', error)
   if (response.headersSent) return
   if (error.type === 'entity.parse.failed') {
     response.status(400).json({ error: 'Request body must contain valid JSON.' })
     return
   }
+  if (error.type === 'entity.too.large') {
+    response.status(413).json({ error: 'Request body exceeds the 32 KB limit.' })
+    return
+  }
+  console.error('Request failed:', error)
   response.status(500).json({ error: 'An unexpected server error occurred.' })
 })
 

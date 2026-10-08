@@ -1,4 +1,4 @@
-# Carepoint Hospital Management Demo
+# Carepoint Hospital Management
 
 A responsive hospital operations dashboard built with React and Vite. The client uses the Express API for authentication and MongoDB-backed records.
 
@@ -19,7 +19,8 @@ Run `npm run lint` and `npm run build` to validate the client.
 - Patient directory with add/edit forms, care assignments, search, and CSV export.
 - Doctor directory with specialties, availability, search, and CSV export.
 - Appointment scheduling and editing, visit status updates, search, and CSV export.
-- Invoice list with demo payment-status toggles and CSV export.
+- Invoice create/delete flows, internal payment-status updates, and CSV export.
+- Delete actions for clinic records, with server-side protection against deleting referenced patients or doctors.
 - Signed-in clinic staff access; administrator-only staff account creation.
 - MongoDB-backed records and secure, HTTP-only session cookies.
 

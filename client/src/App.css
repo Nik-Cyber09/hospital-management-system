@@ -177,6 +177,7 @@ td { padding: 12px 14px; border-top: 1px solid #eff2f3; color: #657780; font-siz
 .table-subtext { display: block; }
 .row-action { width: 28px; height: 28px; display: inline-grid; place-items: center; border: 0; border-radius: 5px; color: #83949a; background: transparent; cursor: pointer; }
 .row-action:hover { color: #208873; background: #edf7f4; }
+.row-action-danger:hover { color: #bd6359; background: #fff0ed; }
 .row-actions { display: flex; align-items: center; gap: 4px; }
 .action-text { padding: 5px 7px; border: 0; border-radius: 4px; color: #298a76; background: transparent; font-size: 9px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .action-text:hover { background: #edf7f4; }
