@@ -426,7 +426,7 @@ function Metric({ icon, label, value, note, tone }) {
   return <article className="metric-card"><span className={`metric-icon metric-${tone}`}><Icon name={icon} size={20} /></span><span className="metric-label">{label}</span><strong className="metric-value">{value}</strong><span className="metric-note">{note}</span><span className="metric-spark" aria-hidden="true">⌁</span></article>
 }
 
-function Patients({ patients, records, onEdit }) {
+function Patients({ patients, records, onEdit, onDelete }) {
   return <section className="panel data-panel"><div className="table-toolbar"><div><strong>{patients.length} patients</strong><span>Patient directory and care status</span></div><button className="filter-button" onClick={() => onEdit(patients[0])} disabled={!patients.length}>Quick edit <Icon name="edit" size={15} /></button></div>
     <div className="table-scroll"><table><thead><tr><th>Patient</th><th>Patient ID</th><th>Age / Gender</th><th>Condition</th><th>Assigned doctor</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>
       {patients.map((patient, index) => <tr key={patient.id}><td><div className="person-cell"><Avatar name={patient.name} tone={index} /><span><strong>{patient.name}</strong><small>{patient.phone}</small></span></div></td><td className="id-cell">{patient.id}</td><td>{patient.age} yrs · {patient.gender}</td><td>{patient.condition}</td><td>{personName(records.doctors, patient.doctorId)}</td><td><StatusBadge>{patient.status}</StatusBadge></td><td><button className="row-action" aria-label={`Edit ${patient.name}`} onClick={() => onEdit(patient)}><Icon name="edit" size={16} /></button></td></tr>)}
