@@ -303,11 +303,11 @@ function HospitalApp({ user, onLogout }) {
                 : <button className="button button-primary" onClick={activeSection === 'Doctors' ? () => setModal({ kind: 'doctor' }) : activeSection === 'Patients' ? () => setModal({ kind: 'patient' }) : openAppointmentForm}><Icon name="plus" size={18} /> {activeSection === 'Overview' ? 'New appointment' : `Add ${activeSection === 'Appointments' ? 'appointment' : activeSection.slice(0, -1).toLowerCase()}`}</button>}
             </div>
           </div>
-          {activeSection === 'Overview' && <Dashboard records={records} today={today} todayAppointments={todayAppointments} onNavigate={setActiveSection} onNewAppointment={openAppointmentForm} />}
-          {activeSection === 'Appointments' && <Appointments appointments={visibleAppointments} records={records} onEdit={(item) => setModal({ kind: 'appointment', item })} onStatus={setAppointmentStatus} />}
-          {activeSection === 'Patients' && <Patients patients={visiblePatients} records={records} onEdit={(item) => setModal({ kind: 'patient', item })} />}
-          {activeSection === 'Doctors' && <Doctors doctors={visibleDoctors} onEdit={(item) => setModal({ kind: 'doctor', item })} />}
-          {activeSection === 'Billing' && <Billing invoices={visibleInvoices} records={records} onToggle={toggleInvoice} />}
+          {activeSection === 'Overview' && <Dashboard records={records} today={today} now={now} todayAppointments={todayAppointments} onNavigate={setActiveSection} onNewAppointment={openAppointmentForm} />}
+          {activeSection === 'Patients' && <Patients patients={visiblePatients} records={records} onEdit={(item) => setModal({ kind: 'patient', item })} onDelete={(item) => deleteRecord('patients', item)} />}
+          {activeSection === 'Doctors' && <Doctors doctors={visibleDoctors} onEdit={(item) => setModal({ kind: 'doctor', item })} onDelete={(item) => deleteRecord('doctors', item)} />}
+          {activeSection === 'Appointments' && <Appointments appointments={visibleAppointments} records={records} onEdit={(item) => setModal({ kind: 'appointment', item })} onStatus={setAppointmentStatus} onDelete={(item) => deleteRecord('appointments', item)} />}
+          {activeSection === 'Billing' && <Billing invoices={visibleInvoices} records={records} onToggle={toggleInvoice} onDelete={(item) => deleteRecord('invoices', item)} />}
           {activeSection === 'Staff' && user.role === 'admin' && <StaffDirectory onNotify={notify} />}
           <footer className="page-footer"><span><span className="footer-dot" /> Clinic records are stored on your server</span><span>Carepoint Health · Not for real patient data until approved</span></footer>
         </div>
