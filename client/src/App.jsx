@@ -72,6 +72,7 @@ function HospitalApp({ user, onLogout }) {
     const date = new Date()
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   })
+  const [now] = useState(() => Date.now())
 
   useEffect(() => {
     let cancelled = false
