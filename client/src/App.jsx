@@ -365,7 +365,7 @@ function sectionDescription(section) {
   }[section]
 }
 
-function Dashboard({ records, today, todayAppointments, onNavigate, onNewAppointment }) {
+function Dashboard({ records, today, now, todayAppointments, onNavigate, onNewAppointment }) {
   const waiting = todayAppointments.filter((item) => item.status === 'Waiting').length
   const totalBilled = records.invoices.reduce((sum, item) => sum + item.amount, 0)
   const paid = records.invoices.filter((item) => item.status === 'Paid').reduce((sum, item) => sum + item.amount, 0)
