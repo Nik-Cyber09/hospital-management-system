@@ -444,7 +444,7 @@ function Doctors({ doctors, onEdit, onDelete }) {
   </section>
 }
 
-function Appointments({ appointments, records, onEdit, onStatus }) {
+function Appointments({ appointments, records, onEdit, onStatus, onDelete }) {
   return <section className="panel data-panel"><div className="table-toolbar"><div><strong>{appointments.length} appointments</strong><span>Review, update, and manage visit status</span></div><span className="team-summary"><Icon name="clock" size={16} /> {appointments.filter((item) => item.status === 'Waiting').length} waiting</span></div>
     <div className="table-scroll"><table><thead><tr><th>Patient</th><th>Date &amp; time</th><th>Provider</th><th>Visit reason</th><th>Status</th><th>Actions</th></tr></thead><tbody>
       {appointments.map((item, index) => <tr key={item.id}><td><div className="person-cell"><Avatar name={personName(records.patients, item.patientId)} tone={index + 1} /><span><strong>{personName(records.patients, item.patientId)}</strong><small>{item.id}</small></span></div></td><td><strong>{formatDate(item.date, { month: 'short', day: 'numeric' })}</strong><small className="table-subtext">{formatTime(item.date)}</small></td><td>{personName(records.doctors, item.doctorId)}</td><td>{item.reason}</td><td><StatusBadge>{item.status}</StatusBadge></td><td><div className="row-actions"><button className="row-action" aria-label={`Edit ${item.id}`} onClick={() => onEdit(item)}><Icon name="edit" size={16} /></button>{item.status !== 'Completed' && item.status !== 'Cancelled' && <button className="action-text" onClick={() => onStatus(item.id, 'Completed')}>Complete</button>}</div></td></tr>)}
