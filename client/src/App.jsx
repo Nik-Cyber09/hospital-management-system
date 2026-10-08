@@ -435,7 +435,7 @@ function Patients({ patients, records, onEdit, onDelete }) {
   </section>
 }
 
-function Doctors({ doctors, onEdit }) {
+function Doctors({ doctors, onEdit, onDelete }) {
   return <section className="panel data-panel"><div className="table-toolbar"><div><strong>{doctors.length} care team members</strong><span>Manage specialties and availability</span></div><span className="team-summary"><i /> {doctors.filter((doctor) => doctor.status === 'On duty').length} on duty</span></div>
     <div className="table-scroll"><table><thead><tr><th>Doctor</th><th>Specialty</th><th>Contact</th><th>Availability</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>
       {doctors.map((doctor, index) => <tr key={doctor.id}><td><div className="person-cell"><Avatar name={doctor.name} tone={index + 1} /><span><strong>{doctor.name}</strong><small>{doctor.id}</small></span></div></td><td><span className="specialty-chip">{doctor.specialty}</span></td><td><span>{doctor.email}</span><small className="table-subtext">{doctor.phone}</small></td><td>{doctor.availability || 'Schedule not set'}</td><td><StatusBadge>{doctor.status}</StatusBadge></td><td><button className="row-action" aria-label={`Edit ${doctor.name}`} onClick={() => onEdit(doctor)}><Icon name="edit" size={16} /></button></td></tr>)}
