@@ -407,7 +407,7 @@ function Dashboard({ records, today, now, todayAppointments, onNavigate, onNewAp
       </section>
       <section className="panel appointments-panel">
         <div className="panel-heading"><div><h2>Upcoming appointments</h2><p>Your next visits</p></div><button className="text-link" onClick={() => onNavigate('Appointments')}>See schedule <Icon name="arrow" size={16} /></button></div>
-        <div className="upcoming-list">{records.appointments.filter((item) => item.status !== 'Cancelled').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4).map((item, index) => <div className="upcoming-row" key={item.id}>
+        <div className="upcoming-list">{upcomingAppointments.slice(0, 4).map((item, index) => <div className="upcoming-row" key={item.id}>
           <div className="upcoming-date"><strong>{formatDate(item.date, { day: '2-digit' })}</strong><span>{formatDate(item.date, { month: 'short' })}</span></div>
           <Avatar name={personName(records.patients, item.patientId)} tone={index + 1} />
           <div className="schedule-detail"><strong>{personName(records.patients, item.patientId)}</strong><span>{personName(records.doctors, item.doctorId)} · {formatTime(item.date)}</span></div>
