@@ -18,7 +18,7 @@ Carepoint is a small-clinic hospital-operations application with a React/Vite cl
    node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
    ```
 
-5. Set `CLIENT_ORIGIN=http://localhost:5173` for local development. Configure the exact HTTPS client origin in production.
+5. Set `CLIENT_ORIGIN=http://localhost:5173,http://127.0.0.1:5173` for local development (so either loopback URL works). Configure only the exact HTTPS client origin or origins in production.
 
 Never commit `.env` files, database credentials, or administrator passwords. Atlas network access and database-user privileges must be configured in Atlas; keep access restricted rather than allowing all IPs.
 
