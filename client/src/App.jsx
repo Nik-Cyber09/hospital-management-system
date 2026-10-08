@@ -101,6 +101,17 @@ function HospitalApp({ user, onLogout }) {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
+  useEffect(() => {
+    const focusSearch = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        searchInput.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', focusSearch)
+    return () => window.removeEventListener('keydown', focusSearch)
+  }, [])
+
   const todayAppointments = useMemo(() => records.appointments
     .filter((appointment) => appointment.date && localDateKey(appointment.date) === today && appointment.status !== 'Cancelled')
     .sort((a, b) => a.date.localeCompare(b.date)), [records.appointments, today])
